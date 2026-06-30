@@ -7,7 +7,7 @@ The system operates on a local machine with limited disk space (max 135GB free),
 
 ### 2. System Architecture
 The system consists of two separate processes sharing a SQLite database (`migration_state.db`):
-- **Migration Engine (`main.py`)**: Python CLI script that orchestrates the download and upload of files.
+- **Migration Engine (`main.py`)**: Python CLI script that orchestrates the download and upload of files. Uses a **Hybrid Concurrent Architecture** with thread pools for parallel processing.
 - **Web Dashboard (`web_server.py`)**: FastAPI web server for real-time monitoring of the queue and errors.
 
 ### 3. Data Flow and Core Business Rules
@@ -17,9 +17,11 @@ The system consists of two separate processes sharing a SQLite database (`migrat
 2. Upon restart, the system offers to **skip scanning** (if the DB already has files) to save time.
 3. If there are files in `ERROR` status from previous cycles, the system asks the user if they want to reset them to `PENDING` to process them first.
 
-#### B. Limited Disk Space Management
-1. Files are downloaded one by one into the local `tmp_migration/` folder.
-2. Once the upload to Google Drive is complete and validation passes, the local file **MUST be deleted** immediately to avoid exhausting the 135GB of available space.
+#### B. Limited Disk Space & Hybrid Transfer Management
+To bypass the 135GB disk space constraint and maximize throughput, the system employs a dual-strategy:
+1. **Zero-Copy RAM Streaming (< 50MB)**: 10 parallel small-file workers download data from Dropbox directly into RAM (`io.BytesIO`) and stream it instantly to Google Drive. The disk is completely bypassed, eliminating local I/O bottlenecks.
+2. **Chunked Disk Transfer (>= 50MB)**: Large files are routed to 2 dedicated Downloader and 2 Uploader threads. They are temporarily written to the local `tmp_migration/` folder. Once uploaded to Google Drive and validated, the local file **MUST be deleted** immediately.
+3. **Database Concurrency**: The SQLite DB utilizes transactional row locking (`with self.conn`) when fetching `PENDING` files to ensure multiple threads never overlap on the same file.
 
 #### C. Integrity Check (Digital Fingerprint)
 1. For each downloaded file, an **MD5 Checksum** is calculated locally.

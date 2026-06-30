@@ -56,6 +56,7 @@ def main():
         
         confirm = input("Do you want to start the migration process now? (y/n): ")
         if confirm.lower() == 'y':
+            migrator.db.reset_stuck_states()
             migrator.process_queue()
         else:
             print("Migration paused. Run again to continue.")

@@ -4,12 +4,14 @@ A resilient tool written in Python to migrate massive amounts of data (TB) from 
 Designed for computers with limited disk space, it calculates a digital fingerprint (MD5) to ensure file integrity and features a real-time Web Dashboard.
 
 ## Features
-- **Low Disk Footprint**: Temporarily downloads files and deletes them immediately after successful upload.
-- **100% Data Integrity**: Cryptographic verification (MD5 Checksum) between the local file and Google Drive.
-- **Resumability & Rate Limiting**: Stop and resume whenever you want. Includes exponential backoff for API limits.
-- **Live Dashboard**: Modern Web Interface with pagination, error control, and real-time streaming progress bars.
-  - **Overall Progress & ETA**: Global tracker calculating remaining time and overall completed data.
-  - **Active Operations Tracker**: Separated visual trackers for ongoing Downloads (with speeds) and Uploads.
+- **Hybrid Concurrent Architecture**: Runs up to 14 parallel threads using a dual-strategy transfer approach.
+- **Zero-Copy RAM Streaming (<50MB)**: Instantly pipes small files from Dropbox to Google Drive entirely in memory, eliminating disk I/O bottlenecks.
+- **Chunked Disk Transfer (>=50MB)**: Temporarily downloads large files and deletes them immediately after a successful upload to save local disk space.
+- **100% Data Integrity**: Cryptographic verification (MD5 Checksum) between the local file/RAM and Google Drive.
+- **Resumability & Rate Limiting**: Stop and resume whenever you want. Database row-locking ensures parallel threads never overlap. Includes exponential backoff for API limits.
+- **Live Dashboard**: Modern Web Interface with pagination, error control, and a collapsible Active Operations panel.
+  - **Overall Progress & ETA**: Global tracker calculating remaining time, total transferred, and completed files.
+  - **Active Operations Tracker**: Separated visual trackers for ongoing concurrent Downloads and Uploads.
 - **OAuth Offline Flow**: No token expiration (supports uninterrupted migrations lasting weeks).
 
 ## Setup and Installation

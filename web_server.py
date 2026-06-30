@@ -79,8 +79,8 @@ def get_stats():
         ''')
         recent_files = [dict(row) for row in cur.fetchall()]
         
-        current_download = None
-        current_upload = None
+        current_downloads = []
+        current_uploads = []
         try:
             if os.path.exists('progress.json'):
                 with open('progress.json', 'r') as f:
@@ -89,31 +89,54 @@ def get_stats():
                     
                 now = time.time()
                 
-                def parse_prog(p):
+                # Sliding window speed for block (overall session)
+                global dl_history, ul_history
+                if 'dl_history' not in globals():
+                    global dl_history; dl_history = deque(maxlen=10)
+                if 'ul_history' not in globals():
+                    global ul_history; ul_history = deque(maxlen=10)
+                    
+                sess_dl = prog_state.get('session_downloaded', 0)
+                sess_ul = prog_state.get('session_uploaded', 0)
+                
+                # Only append if values changed or if queues are empty to establish a baseline
+                dl_history.append((now, sess_dl))
+                ul_history.append((now, sess_ul))
+                
+                dl_speed_bps = 0
+                ul_speed_bps = 0
+                
+                if len(dl_history) > 1:
+                    dt = dl_history[-1][0] - dl_history[0][0]
+                    if dt > 0:
+                        dl_speed_bps = max(0, (dl_history[-1][1] - dl_history[0][1]) / dt)
+                        
+                if len(ul_history) > 1:
+                    dt = ul_history[-1][0] - ul_history[0][0]
+                    if dt > 0:
+                        ul_speed_bps = max(0, (ul_history[-1][1] - ul_history[0][1]) / dt)
+                
+                def parse_prog(file_path, p, global_speed):
                     if not p: return None
-                    if now - p.get('updated_at', 0) > 15: return None
+                    if now - p.get('updated_at', 0) > 60: return None
                     
                     transferred = p.get('transferred', 0)
                     total = p.get('total', 1)
-                    start_time = p.get('start_time', 0)
-                    updated_at = p.get('updated_at', 0)
                     
-                    elapsed = updated_at - start_time
-                    speed_bps = transferred / elapsed if elapsed > 0 else 0
-                    
+                    p['file'] = file_path
                     p['percent'] = (transferred / total) * 100 if total > 0 else 0
-                    p['speed_bps'] = speed_bps
+                    p['speed_bps'] = global_speed # Override with block speed
                     return p
                     
-                if 'download' in prog_state or 'upload' in prog_state:
-                    current_download = parse_prog(prog_state.get('download'))
-                    current_upload = parse_prog(prog_state.get('upload'))
-                else:
-                    # fallback for old schema
-                    if prog_state.get('action') == 'DOWNLOADING':
-                        current_download = parse_prog(prog_state)
-                    elif prog_state.get('action') == 'UPLOADING':
-                        current_upload = parse_prog(prog_state)
+                if 'active_downloads' in prog_state:
+                    for fp, p in prog_state['active_downloads'].items():
+                        parsed = parse_prog(fp, p, dl_speed_bps)
+                        if parsed: current_downloads.append(parsed)
+                        
+                if 'active_uploads' in prog_state:
+                    for fp, p in prog_state['active_uploads'].items():
+                        parsed = parse_prog(fp, p, ul_speed_bps)
+                        if parsed: current_uploads.append(parsed)
         except Exception:
             pass
             
@@ -126,8 +149,8 @@ def get_stats():
             "global_speed_bps": global_speed_bps,
             "eta_seconds": eta_seconds,
             "recent_files": recent_files,
-            "current_download": current_download,
-            "current_upload": current_upload
+            "current_downloads": current_downloads,
+            "current_uploads": current_uploads
         }
     except Exception as e:
         return {"status": f"Database error: {e}"}

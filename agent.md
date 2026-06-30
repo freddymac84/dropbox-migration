@@ -15,9 +15,11 @@ A Python tool to migrate large volumes of data from Dropbox to Google Drive with
 
 ## System Architecture & Patterns
 
-1. **Storage Constraint Strategy**:
-   The user has ~135GB of disk space and 1.5TB of data to migrate.
-   **CRITICAL PATTERN**: Files are downloaded to `tmp_migration/`. Once `gdrive_client.upload_file` succeeds and checksums are validated, the local file MUST be deleted immediately. Do not modify this pipeline to store files in batch.
+1. **Storage Constraint Strategy & Hybrid Architecture**:
+   The user has ~135GB of disk space and 1.5TB of data to migrate. We bypass this limitation by using a Hybrid Concurrent Architecture:
+   - **Zero-Copy RAM Streaming (< 50MB)**: 10 parallel small-file workers download data from Dropbox directly into RAM (`io.BytesIO`) and stream it instantly to Google Drive.
+   - **Chunked Disk Transfer (>= 50MB)**: Large files are routed to 2 Downloader and 2 Uploader threads. They are temporarily written to the local `tmp_migration/` folder and deleted immediately after.
+   - **Thread Safety**: Google API client is NOT thread-safe. `GDriveClient` must use `threading.local()` for the service object. Database writes/updates use `with self.conn` for transactional locking.
 
 2. **Database & Resumability**:
    `DBManager` handles the queue. Files start as `PENDING`, transition to `DOWNLOADED` (briefly), then `COMPLETED` or `ERROR`.

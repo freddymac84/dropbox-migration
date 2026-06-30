@@ -137,3 +137,27 @@ class DropboxClient:
         except Exception as e:
             print(f"Error downloading {dropbox_path}: {e}")
             return False
+
+    @with_retry()
+    def _files_download_to_stream(self, dropbox_path, progress_callback):
+        import io
+        metadata, response = self.dbx.files_download(dropbox_path)
+        total_size = metadata.size
+        downloaded = 0
+        stream = io.BytesIO()
+        for chunk in response.iter_content(chunk_size=1024*1024):
+            if chunk:
+                stream.write(chunk)
+                downloaded += len(chunk)
+                if progress_callback:
+                    progress_callback('DOWNLOADING', dropbox_path, downloaded, total_size)
+        stream.seek(0)
+        return stream
+
+    def download_file_to_stream(self, dropbox_path, progress_callback=None):
+        """Downloads a file from Dropbox directly into an in-memory BytesIO stream."""
+        try:
+            return self._files_download_to_stream(dropbox_path, progress_callback)
+        except Exception as e:
+            print(f"Error downloading stream {dropbox_path}: {e}")
+            return None

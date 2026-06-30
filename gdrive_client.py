@@ -3,7 +3,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
@@ -24,8 +24,14 @@ class GDriveClient:
             with open(token_file, 'w') as token:
                 token.write(self.creds.to_json())
 
-        self.service = build('drive', 'v3', credentials=self.creds)
+        import threading
+        self.local = threading.local()
         self.folder_cache = {} # Cache folder IDs to avoid redundant API calls
+
+    def get_service(self):
+        if not hasattr(self.local, 'service'):
+            self.local.service = build('drive', 'v3', credentials=self.creds)
+        return self.local.service
 
     def _get_or_create_folder(self, folder_name, parent_id=None):
         # Escape single quotes in folder name to avoid query errors
@@ -40,7 +46,7 @@ class GDriveClient:
         else:
             query += " and 'root' in parents"
 
-        results = self.service.files().list(q=query, fields="files(id, name)").execute()
+        results = self.get_service().files().list(q=query, fields="files(id, name)").execute()
         items = results.get('files', [])
 
         if items:
@@ -52,7 +58,7 @@ class GDriveClient:
             }
             if parent_id:
                 file_metadata['parents'] = [parent_id]
-            folder = self.service.files().create(body=file_metadata, fields='id').execute()
+            folder = self.get_service().files().create(body=file_metadata, fields='id').execute()
             folder_id = folder.get('id')
             
         self.folder_cache[cache_key] = folder_id
@@ -69,8 +75,8 @@ class GDriveClient:
             parent_id = self._get_or_create_folder(folder, parent_id)
         return parent_id
 
-    def upload_file(self, local_path, gdrive_path, progress_callback=None):
-        """Uploads a file, creating necessary folders."""
+    def upload_file(self, local_path_or_stream, gdrive_path, progress_callback=None, is_stream=False, mimetype='application/octet-stream'):
+        """Uploads a file from disk or from an in-memory stream, creating necessary folders."""
         dir_name = os.path.dirname(gdrive_path)
         file_name = os.path.basename(gdrive_path)
         
@@ -81,10 +87,13 @@ class GDriveClient:
             file_metadata['parents'] = [parent_id]
             
         # Use chunked upload for large files (5MB chunks)
-        media = MediaFileUpload(local_path, resumable=True, chunksize=5*1024*1024)
+        if is_stream:
+            media = MediaIoBaseUpload(local_path_or_stream, mimetype=mimetype, resumable=True, chunksize=5*1024*1024)
+        else:
+            media = MediaFileUpload(local_path_or_stream, resumable=True, chunksize=5*1024*1024)
         
         try:
-            request = self.service.files().create(body=file_metadata, media_body=media, fields='id, size, md5Checksum')
+            request = self.get_service().files().create(body=file_metadata, media_body=media, fields='id, size, md5Checksum')
             response = None
             while response is None:
                 status, response = request.next_chunk()
