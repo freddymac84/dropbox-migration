@@ -4,6 +4,32 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+from googleapiclient.errors import HttpError
+import time
+
+def gdrive_with_retry(max_retries=5):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except HttpError as e:
+                    if e.resp.status in [403, 429, 500, 502, 503, 504]:
+                        wait_time = (2 ** retries) + 1
+                        print(f"  [GDrive API Limit/Error] Status {e.resp.status}. Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        retries += 1
+                    else:
+                        raise e
+                except Exception as e:
+                    print(f"  [GDrive Network Error] {e}. Retrying in {2**retries}s...")
+                    time.sleep(2**retries)
+                    retries += 1
+            print("  [GDrive] Max retries exceeded.")
+            raise Exception("Max retries exceeded for GDrive API")
+        return wrapper
+    return decorator
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
@@ -33,6 +59,7 @@ class GDriveClient:
             self.local.service = build('drive', 'v3', credentials=self.creds)
         return self.local.service
 
+    @gdrive_with_retry()
     def _get_or_create_folder(self, folder_name, parent_id=None):
         # Escape single quotes in folder name to avoid query errors
         safe_folder_name = folder_name.replace("'", "\\'")
@@ -75,6 +102,7 @@ class GDriveClient:
             parent_id = self._get_or_create_folder(folder, parent_id)
         return parent_id
 
+    @gdrive_with_retry()
     def upload_file(self, local_path_or_stream, gdrive_path, progress_callback=None, is_stream=False, mimetype='application/octet-stream'):
         """Uploads a file from disk or from an in-memory stream, creating necessary folders."""
         dir_name = os.path.dirname(gdrive_path)

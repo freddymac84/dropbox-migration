@@ -116,6 +116,10 @@ class Migrator:
             
             write_progress('UPLOADING', dropbox_path, 0, size)
             upload_result = self.gdrive.upload_file(stream, gdrive_path, write_progress, is_stream=True)
+            
+            if upload_result and 'id' in upload_result:
+                write_progress('UPLOADING', dropbox_path, size, size)
+                
             remove_progress('DOWNLOADING', dropbox_path)
             remove_progress('UPLOADING', dropbox_path)
             
@@ -186,6 +190,10 @@ class Migrator:
             write_progress('UPLOADING', dropbox_path, 0, size)
             
             upload_result = self.gdrive.upload_file(local_path, gdrive_path, write_progress)
+            
+            if upload_result and 'id' in upload_result:
+                write_progress('UPLOADING', dropbox_path, size, size)
+                
             remove_progress('UPLOADING', dropbox_path)
             
             if upload_result and 'id' in upload_result:
@@ -217,11 +225,11 @@ class Migrator:
         """Processes the migration queue using size-based routing and multiple workers."""
         print("Starting hybrid migration queue processing...")
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=14) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=34) as executor:
             futures = []
             
-            # Start 10 small file workers
-            for _ in range(10):
+            # Start 30 small file workers
+            for _ in range(30):
                 futures.append(executor.submit(self._small_file_worker))
                 
             # Start 2 large file downloaders
