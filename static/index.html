@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropbox to Drive - Migration Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
+        .stat-value { font-variant-numeric: tabular-nums; }
+        
+        /* Box interactions */
+        .clickable-box { transition: all 0.2s ease-in-out; cursor: pointer; }
+        .clickable-box:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); border-color: rgba(255,255,255,0.3); }
+        
+        /* Scrollbar styling per tabelle */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+    </style>
+</head>
+<body class="min-h-screen p-6 flex flex-col items-center">
+    
+    <div class="w-full max-w-6xl mb-8 flex justify-between items-end">
+        <div>
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">Migration Dashboard</h1>
+            <p class="text-slate-400 mt-2">Real-time Monitoring: Dropbox ➔ Google Drive</p>
+        </div>
+        <div class="flex items-center gap-3 glass-panel px-4 py-2">
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <span class="text-sm font-medium text-emerald-400 uppercase tracking-wider">Live Syncing</span>
+        </div>
+    </div>
+
+    <!-- WIDGET PROGRESSO -->
+    <div id="progress-widget" class="w-full max-w-6xl mb-6 hidden">
+        <div class="glass-panel p-6 relative overflow-hidden border-indigo-500/40">
+            <!-- Sfondo animato leggero -->
+            <div id="progress-bg" class="absolute top-0 left-0 h-full bg-indigo-500/10 transition-all duration-300" style="width: 0%;"></div>
+            
+            <div class="relative z-10 flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <span id="progress-badge" class="px-2 py-1 text-xs font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            ACTION
+                        </span>
+                        <span id="progress-file" class="text-slate-200 font-medium truncate max-w-xl">/percorso/del/file.mp4</span>
+                    </div>
+                    <span id="progress-speed" class="text-slate-400 font-mono text-sm">-- MB/s</span>
+                </div>
+                
+                <div class="w-full bg-slate-800/80 rounded-full h-2.5 border border-slate-700/50 overflow-hidden">
+                    <div id="progress-bar-fill" class="bg-indigo-400 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                
+                <div class="flex justify-between items-center text-xs font-mono text-slate-400">
+                    <span id="progress-bytes">0 MB / 0 MB</span>
+                    <span id="progress-percent" class="font-bold text-slate-300">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA PRINCIPALE (DASHBOARD) -->
+    <div id="dashboard-view" class="w-full max-w-6xl flex flex-col gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="glass-panel p-6 flex flex-col justify-center">
+                <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">Pending</span>
+                <span id="stat-pending" class="stat-value text-4xl font-bold text-slate-200">0</span>
+            </div>
+            
+            <div class="glass-panel p-6 flex flex-col justify-center">
+                <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">Downloaded (Tmp)</span>
+                <span id="stat-downloaded" class="stat-value text-4xl font-bold text-amber-400">0</span>
+            </div>
+            
+            <div class="glass-panel p-6 flex flex-col justify-center clickable-box border-emerald-500/30 hover:border-emerald-400/60" onclick="showDetailView('COMPLETED')">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Completed</span>
+                    <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">Click for list</span>
+                </div>
+                <span id="stat-completed" class="stat-value text-4xl font-bold text-emerald-400">0</span>
+            </div>
+            
+            <div class="glass-panel p-6 flex flex-col justify-center clickable-box border-rose-500/30 hover:border-rose-400/60" onclick="showDetailView('ERROR')">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Errors</span>
+                    <span class="text-xs bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full">Click for list</span>
+                </div>
+                <span id="stat-error" class="stat-value text-4xl font-bold text-rose-400">0</span>
+            </div>
+        </div>
+
+        <div class="glass-panel p-6 w-full flex-1">
+            <h2 class="text-xl font-semibold mb-4 text-slate-200 border-b border-slate-700 pb-3">Recent Activity (Last 20)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
+                            <th class="pb-3 font-medium">Status</th>
+                            <th class="pb-3 font-medium">File Path</th>
+                            <th class="pb-3 font-medium text-right">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-files" class="text-sm">
+                        <!-- Popolato via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA DI DETTAGLIO (Nascosata di default) -->
+    <div id="detail-view" class="w-full max-w-6xl hidden flex-col gap-4">
+        <button onclick="hideDetailView()" class="w-fit mb-2 flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Back to Dashboard
+        </button>
+        
+        <div class="glass-panel p-6 w-full flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-4 mb-4">
+                <h2 id="detail-title" class="text-2xl font-semibold text-slate-200">File Details</h2>
+                <div class="text-sm text-slate-400">Page <span id="detail-current-page" class="font-bold text-white">1</span> of <span id="detail-total-pages" class="font-bold text-white">1</span></div>
+            </div>
+            
+            <div class="overflow-x-auto min-h-[400px]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
+                            <th class="pb-3 font-medium w-1/2">File Path</th>
+                            <th class="pb-3 font-medium w-1/4">Details / Error</th>
+                            <th class="pb-3 font-medium text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detail-table-body" class="text-sm">
+                        <!-- Popolato via JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginazione -->
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-700/50">
+                <button id="btn-prev" onclick="changePage(-1)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    &larr; Previous
+                </button>
+                <div id="detail-total-items" class="text-sm text-slate-400">Found: 0 files</div>
+                <button id="btn-next" onclick="changePage(1)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next &rarr;
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // -- Logica Dashboard --
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'PENDING': return 'text-slate-400';
+                case 'DOWNLOADED': return 'text-amber-400';
+                case 'COMPLETED': return 'text-emerald-400';
+                case 'ERROR': return 'text-rose-400';
+                default: return 'text-slate-400';
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                
+                // Update boxes
+                document.getElementById('stat-pending').textContent = data.stats.PENDING || 0;
+                document.getElementById('stat-downloaded').textContent = data.stats.DOWNLOADED || 0;
+                document.getElementById('stat-completed').textContent = data.stats.COMPLETED || 0;
+                document.getElementById('stat-error').textContent = data.stats.ERROR || 0;
+
+                // Update Progress Widget
+                const progWidget = document.getElementById('progress-widget');
+                if (data.current_progress && currentDetailStatus === null) {
+                    progWidget.classList.remove('hidden');
+                    const p = data.current_progress;
+                    
+                    const isUpload = p.action === 'UPLOADING';
+                    const colorStr = isUpload ? 'emerald' : 'blue';
+                    const colorHex = isUpload ? '#34d399' : '#60a5fa'; // emerald-400 vs blue-400
+                    const bgHex = isUpload ? 'rgba(52, 211, 153, 0.2)' : 'rgba(96, 165, 250, 0.2)';
+                    
+                    document.getElementById('progress-badge').style.backgroundColor = bgHex;
+                    document.getElementById('progress-badge').style.color = colorHex;
+                    document.getElementById('progress-badge').style.borderColor = colorHex;
+                    document.getElementById('progress-badge').textContent = p.action;
+                    
+                    document.getElementById('progress-file').textContent = p.file;
+                    
+                    const percent = Math.min(100, Math.max(0, p.percent)).toFixed(1);
+                    document.getElementById('progress-bg').style.width = `${percent}%`;
+                    document.getElementById('progress-bg').style.backgroundColor = isUpload ? 'rgba(52, 211, 153, 0.1)' : 'rgba(96, 165, 250, 0.1)';
+                    
+                    document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+                    document.getElementById('progress-bar-fill').style.backgroundColor = colorHex;
+                    
+                    document.getElementById('progress-percent').textContent = `${percent}%`;
+                    document.getElementById('progress-bytes').textContent = `${formatBytes(p.transferred)} / ${formatBytes(p.total)}`;
+                    
+                    document.getElementById('progress-speed').textContent = `${formatBytes(p.speed_bps)}/s`;
+                } else {
+                    progWidget.classList.add('hidden');
+                }
+
+                // Update recent table if we are on dashboard
+                if (currentDetailStatus === null) {
+                    const tbody = document.getElementById('recent-files');
+                    tbody.innerHTML = '';
+                    
+                    data.recent_files.forEach(f => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-slate-700/30 hover:bg-slate-800/50 transition-colors';
+                        
+                        const statusColor = getStatusColor(f.status);
+                        
+                        tr.innerHTML = `
+                            <td class="py-3 pr-4 font-semibold ${statusColor}">${f.status}</td>
+                            <td class="py-3 pr-4 text-slate-300 truncate max-w-md" title="${f.dropbox_path}">${f.dropbox_path}</td>
+                            <td class="py-3 text-right text-slate-400 font-mono text-xs">${formatBytes(f.size)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error("Errore nel fetch delle stats:", err);
+            }
+        }
+
+        // Fetch ogni 2 secondi
+        setInterval(fetchStats, 2000);
+        fetchStats();
+
+
+        // -- Logica Detail View --
+        let currentDetailStatus = null;
+        let currentPage = 1;
+        let totalPages = 1;
+
+        function showDetailView(status) {
+            currentDetailStatus = status;
+            currentPage = 1;
+            
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('hidden');
+            document.getElementById('detail-view').classList.add('flex');
+            
+            const titleSpan = status === 'ERROR' ? '<span class="text-rose-400">Errors</span>' : '<span class="text-emerald-400">Completed</span>';
+            document.getElementById('detail-title').innerHTML = `File ${titleSpan}`;
+            
+            loadDetailData();
+        }
+
+        function hideDetailView() {
+            currentDetailStatus = null;
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('flex');
+            fetchStats(); // Ricarica subito la table
+        }
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                loadDetailData();
+            }
+        }
+
+        async function loadDetailData() {
+            try {
+                const tbody = document.getElementById('detail-table-body');
+                tbody.innerHTML = '<tr><td colspan="3" class="py-8 text-center text-slate-400">Loading...</td></tr>';
+                
+                const res = await fetch(`/api/files/detail?status=${currentDetailStatus}&page=${currentPage}&limit=50`);
+                const data = await res.json();
+                
+                totalPages = Math.max(1, data.total_pages);
+                document.getElementById('detail-current-page').textContent = data.current_page;
+                document.getElementById('detail-total-pages').textContent = totalPages;
+                document.getElementById('detail-total-items').textContent = `Found: ${data.total_items.toLocaleString()} files`;
+                
+                document.getElementById('btn-prev').disabled = currentPage <= 1;
+                document.getElementById('btn-next').disabled = currentPage >= totalPages;
+
+                tbody.innerHTML = '';
+                
+                if (data.items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="py-8 text-center text-slate-400">No files found.</td></tr>';
+                    return;
+                }
+
+                data.items.forEach(f => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-slate-700/30 hover:bg-slate-800/50 transition-colors';
+                    
+                    let detailsHtml = `<span class="text-slate-400 font-mono text-xs">${formatBytes(f.size)}</span>`;
+                    let actionHtml = '';
+                    
+                    if (currentDetailStatus === 'ERROR') {
+                        const errMsg = f.error_message || 'Unknown error';
+                        detailsHtml = `
+                            <div class="text-xs text-rose-300 font-mono bg-rose-950/30 p-2 rounded border border-rose-900/50 break-words">
+                                ${errMsg}
+                            </div>
+                        `;
+                        actionHtml = `
+                            <button onclick="retryFile('${f.dropbox_path.replace(/'/g, "\\'")}')" class="px-3 py-1 bg-rose-600/20 hover:bg-rose-500/40 text-rose-300 text-xs rounded border border-rose-500/30 transition-colors">
+                                Retry
+                            </button>
+                        `;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="py-4 pr-4">
+                            <div class="text-slate-300 text-sm break-all font-medium">${f.dropbox_path}</div>
+                            <div class="text-slate-500 text-xs mt-1">${new Date(f.updated_at + 'Z').toLocaleString()}</div>
+                        </td>
+                        <td class="py-4 pr-4 align-top pt-5">${detailsHtml}</td>
+                        <td class="py-4 text-right align-top pt-4">${actionHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Errore fetch dettagli:", err);
+            }
+        }
+
+        async function retryFile(dropboxPath) {
+            try {
+                const res = await fetch('/api/files/retry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dropbox_path: dropboxPath })
+                });
+                if (res.ok) {
+                    // Refresh current page (it should disappear from the ERROR list)
+                    loadDetailData();
+                } else {
+                    alert("Error during retry");
+                }
+            } catch (err) {
+                console.error("Retry failed:", err);
+                alert("Failed to connect to the server for retry.");
+            }
+        }
+    </script>
+</body>
+</html>

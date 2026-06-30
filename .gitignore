@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+credentials.json
+token.json
+dropbox_token.json
+migration_state.db
+progress.json
+tmp_migration/

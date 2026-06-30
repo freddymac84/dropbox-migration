@@ -1,0 +1,43 @@
+# Product Requirements Document (PRD)
+## Dropbox to Google Drive Migration Tool
+
+### 1. Project Purpose
+The goal is to safely, verifiably, and continuously migrate 1.5 TB of data from a paid Dropbox account to a Google Drive space, preserving the original folder structure.
+The system operates on a local machine with limited disk space (max 135GB free), which is why a "Stream-and-Delete" approach was chosen (download a file, upload it, delete it locally).
+
+### 2. System Architecture
+The system consists of two separate processes sharing a SQLite database (`migration_state.db`):
+- **Migration Engine (`main.py`)**: Python CLI script that orchestrates the download and upload of files.
+- **Web Dashboard (`web_server.py`)**: FastAPI web server for real-time monitoring of the queue and errors.
+
+### 3. Data Flow and Core Business Rules
+
+#### A. File Scanning and Status
+1. On startup, the system maps the entire Dropbox file tree and inserts it into the SQLite database with `PENDING` status.
+2. Upon restart, the system offers to **skip scanning** (if the DB already has files) to save time.
+3. If there are files in `ERROR` status from previous cycles, the system asks the user if they want to reset them to `PENDING` to process them first.
+
+#### B. Limited Disk Space Management
+1. Files are downloaded one by one into the local `tmp_migration/` folder.
+2. Once the upload to Google Drive is complete and validation passes, the local file **MUST be deleted** immediately to avoid exhausting the 135GB of available space.
+
+#### C. Integrity Check (Digital Fingerprint)
+1. For each downloaded file, an **MD5 Checksum** is calculated locally.
+2. During upload, the MD5 is sent to Google Drive (`md5Checksum`).
+3. If the MD5 or file size on Google Drive differs from the local file, the upload is considered failed and the file transitions to `ERROR` status.
+
+#### D. Authentication and Resilience
+1. **Google Drive**: Uses OAuth2.0 with `credentials.json` and a persistent token generated on the first run.
+2. **Dropbox**: Uses OAuth2.0 Offline Flow (`APP_KEY` and `APP_SECRET`) to generate a Refresh Token. This ensures access never expires (standard tokens only last 4 hours).
+3. **Network Error Handling**: If the Dropbox API times out or hits a Rate Limit (HTTP 429), the client waits and retries using Exponential Backoff.
+4. **Unsupported File Handling**: "Cloud-Only" files (e.g., Google Docs created in Dropbox) throw a specific `ApiError`. The system instantly recognizes this, skips the file, and marks it as `ERROR` without blocking the queue with infinite retries.
+
+### 4. UI/UX Requirements (Dashboard)
+- The web interface (Vanilla JS/HTML/Tailwind) displays real-time counters by querying the server every 2 seconds.
+- Uses a **Single Page Application** (SPA) architecture to display Completed and Error files.
+- The display of 146,000 files is **paginated in blocks of 50** via backend API to prevent browser crashes.
+- The Error page shows the exact reason for failure provided by the API (`error_summary`) and offers a "**Retry**" button to dynamically put the file back in the queue via API.
+- A **Real-Time Progress Widget** reads active chunk transfers and displays a progress bar with percentage, transferred megabytes, and current speed (MB/s).
+
+## Features Documentation
+*(Future complex features should be documented in `docs/features/` and linked here).*
