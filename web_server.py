@@ -78,7 +78,7 @@ def get_stats():
         conn.close()
         
         return {
-            "counts": counts,
+            "stats": counts,
             "total_migrated_bytes": total_size,
             "recent_files": recent_files,
             "current_progress": current_progress
