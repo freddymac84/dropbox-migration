@@ -26,8 +26,8 @@ def gdrive_with_retry(max_retries=5):
                     print(f"  [GDrive Network Error] {e}. Retrying in {2**retries}s...")
                     time.sleep(2**retries)
                     retries += 1
-            print("  [GDrive] Max retries exceeded.")
-            raise Exception("Max retries exceeded for GDrive API")
+            print(f"  [GDrive] Max retries exceeded for API call.")
+            return None
         return wrapper
     return decorator
 
@@ -121,14 +121,10 @@ class GDriveClient:
         else:
             media = MediaFileUpload(local_path_or_stream, resumable=True, chunksize=chunk_size_bytes)
         
-        try:
-            request = self.get_service().files().create(body=file_metadata, media_body=media, fields='id, size, md5Checksum')
-            response = None
-            while response is None:
-                status, response = request.next_chunk()
-                if status and progress_callback:
-                    progress_callback('UPLOADING', gdrive_path, status.resumable_progress, status.total_size)
-            return response
-        except Exception as e:
-            print(f"Error uploading {gdrive_path}: {e}")
-            return None
+        request = self.get_service().files().create(body=file_metadata, media_body=media, fields='id, size, md5Checksum')
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status and progress_callback:
+                progress_callback('UPLOADING', gdrive_path, status.resumable_progress, status.total_size)
+        return response
