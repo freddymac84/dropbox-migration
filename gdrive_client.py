@@ -86,11 +86,12 @@ class GDriveClient:
         if parent_id:
             file_metadata['parents'] = [parent_id]
             
-        # Use chunked upload for large files (5MB chunks)
+        # Use chunked upload for large files (50MB chunks for max throughput)
+        chunk_size_bytes = 50 * 1024 * 1024
         if is_stream:
-            media = MediaIoBaseUpload(local_path_or_stream, mimetype=mimetype, resumable=True, chunksize=5*1024*1024)
+            media = MediaIoBaseUpload(local_path_or_stream, mimetype=mimetype, resumable=True, chunksize=chunk_size_bytes)
         else:
-            media = MediaFileUpload(local_path_or_stream, resumable=True, chunksize=5*1024*1024)
+            media = MediaFileUpload(local_path_or_stream, resumable=True, chunksize=chunk_size_bytes)
         
         try:
             request = self.get_service().files().create(body=file_metadata, media_body=media, fields='id, size, md5Checksum')

@@ -121,7 +121,7 @@ class DropboxClient:
         total_size = metadata.size
         downloaded = 0
         with open(local_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=1024*1024): # 1 MB chunks
+            for chunk in response.iter_content(chunk_size=10*1024*1024): # 10 MB chunks
                 if chunk:
                     f.write(chunk)
                     downloaded += len(chunk)
@@ -145,7 +145,7 @@ class DropboxClient:
         total_size = metadata.size
         downloaded = 0
         stream = io.BytesIO()
-        for chunk in response.iter_content(chunk_size=1024*1024):
+        for chunk in response.iter_content(chunk_size=10*1024*1024):
             if chunk:
                 stream.write(chunk)
                 downloaded += len(chunk)
