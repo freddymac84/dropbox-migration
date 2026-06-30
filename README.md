@@ -8,6 +8,8 @@ Designed for computers with limited disk space, it calculates a digital fingerpr
 - **100% Data Integrity**: Cryptographic verification (MD5 Checksum) between the local file and Google Drive.
 - **Resumability & Rate Limiting**: Stop and resume whenever you want. Includes exponential backoff for API limits.
 - **Live Dashboard**: Modern Web Interface with pagination, error control, and real-time streaming progress bars.
+  - **Overall Progress & ETA**: Global tracker calculating remaining time and overall completed data.
+  - **Active Operations Tracker**: Separated visual trackers for ongoing Downloads (with speeds) and Uploads.
 - **OAuth Offline Flow**: No token expiration (supports uninterrupted migrations lasting weeks).
 
 ## Setup and Installation

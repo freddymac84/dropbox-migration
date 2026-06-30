@@ -37,7 +37,9 @@ The system consists of two separate processes sharing a SQLite database (`migrat
 - Uses a **Single Page Application** (SPA) architecture to display Completed and Error files.
 - The display of 146,000 files is **paginated in blocks of 50** via backend API to prevent browser crashes.
 - The Error page shows the exact reason for failure provided by the API (`error_summary`) and offers a "**Retry**" button to dynamically put the file back in the queue via API.
-- A **Real-Time Progress Widget** reads active chunk transfers and displays a progress bar with percentage, transferred megabytes, and current speed (MB/s).
+- A **Top Level Overall Progress** bar that estimates the global ETA and tracks total data transferred against the entire repository size.
+- **Active Operations** rows that track the real-time chunked transfer speeds for both the ongoing Download and Upload independently.
 
 ## Features Documentation
 *(Future complex features should be documented in `docs/features/` and linked here).*
+- [UX Dashboard Improvements](docs/features/ux_dashboard_improvements.md)

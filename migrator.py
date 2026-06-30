@@ -6,25 +6,31 @@ from db_manager import DBManager
 from dropbox_client import DropboxClient
 from gdrive_client import GDriveClient
 
-_current_action_start = 0
-_current_action = None
+_progress_state = {
+    'download': None,
+    'upload': None
+}
 
 def write_progress(action, file_path, transferred, total):
-    global _current_action, _current_action_start
-    if _current_action != action:
-        _current_action = action
-        _current_action_start = time.time()
+    key = 'download' if action == 'DOWNLOADING' else 'upload'
+    current = _progress_state[key]
+    
+    if current is None or current['file'] != file_path:
+        _progress_state[key] = {
+            'file': file_path,
+            'start_time': time.time(),
+            'transferred': transferred,
+            'total': total,
+            'updated_at': time.time()
+        }
+    else:
+        current['transferred'] = transferred
+        current['total'] = total
+        current['updated_at'] = time.time()
         
     try:
         with open('progress.json', 'w') as f:
-            json.dump({
-                'action': action,
-                'file': file_path,
-                'transferred': transferred,
-                'total': total,
-                'start_time': _current_action_start,
-                'updated_at': time.time()
-            }, f)
+            json.dump(_progress_state, f)
     except:
         pass
 

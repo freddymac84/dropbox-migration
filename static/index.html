@@ -24,45 +24,47 @@
 </head>
 <body class="min-h-screen p-6 flex flex-col items-center">
     
-    <div class="w-full max-w-6xl mb-8 flex justify-between items-end">
-        <div>
-            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">Migration Dashboard</h1>
-            <p class="text-slate-400 mt-2">Real-time Monitoring: Dropbox ➔ Google Drive</p>
+    <div class="w-full max-w-6xl mb-8 flex flex-col gap-4">
+        <div class="flex justify-between items-end">
+            <div>
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">Migration Dashboard</h1>
+                <p class="text-slate-400 mt-2">Real-time Monitoring: Dropbox ➔ Google Drive</p>
+            </div>
+            <div class="flex items-center gap-3 glass-panel px-4 py-2">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span class="text-sm font-medium text-emerald-400 uppercase tracking-wider">Live Syncing</span>
+            </div>
         </div>
-        <div class="flex items-center gap-3 glass-panel px-4 py-2">
-            <span class="relative flex h-3 w-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <span class="text-sm font-medium text-emerald-400 uppercase tracking-wider">Live Syncing</span>
-        </div>
-    </div>
-
-    <!-- WIDGET PROGRESSO -->
-    <div id="progress-widget" class="w-full max-w-6xl mb-6 hidden">
-        <div class="glass-panel p-6 relative overflow-hidden border-indigo-500/40">
-            <!-- Sfondo animato leggero -->
-            <div id="progress-bg" class="absolute top-0 left-0 h-full bg-indigo-500/10 transition-all duration-300" style="width: 0%;"></div>
-            
-            <div class="relative z-10 flex flex-col gap-3">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <span id="progress-badge" class="px-2 py-1 text-xs font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                            ACTION
-                        </span>
-                        <span id="progress-file" class="text-slate-200 font-medium truncate max-w-xl">/percorso/del/file.mp4</span>
+        
+        <!-- Overall Progress -->
+        <div class="glass-panel p-4 flex flex-col gap-2 relative overflow-hidden border-blue-500/30">
+            <div id="overall-progress-bg" class="absolute top-0 left-0 h-full bg-blue-500/10 transition-all duration-500" style="width: 0%;"></div>
+            <div class="relative z-10 flex justify-between items-center">
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">Overall Progress</span>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span id="overall-migrated" class="text-2xl font-bold text-white">0 B</span>
+                        <span class="text-slate-400 text-sm">/</span>
+                        <span id="overall-total" class="text-slate-400 text-sm">0 B</span>
                     </div>
-                    <span id="progress-speed" class="text-slate-400 font-mono text-sm">-- MB/s</span>
                 </div>
-                
-                <div class="w-full bg-slate-800/80 rounded-full h-2.5 border border-slate-700/50 overflow-hidden">
-                    <div id="progress-bar-fill" class="bg-indigo-400 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                <div class="flex flex-col items-end">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">ETA & Current Speeds</span>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span id="overall-eta" class="text-lg font-medium text-slate-200 mr-2">Calculating...</span>
+                        <span id="top-dl-speed" class="text-xs text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-500/20" title="Download Speed">↓ 0 B/s</span>
+                        <span id="top-ul-speed" class="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded border border-purple-500/20" title="Upload Speed">↑ 0 B/s</span>
+                    </div>
                 </div>
-                
-                <div class="flex justify-between items-center text-xs font-mono text-slate-400">
-                    <span id="progress-bytes">0 MB / 0 MB</span>
-                    <span id="progress-percent" class="font-bold text-slate-300">0%</span>
-                </div>
+            </div>
+            <div class="relative z-10 w-full bg-slate-800/80 rounded-full h-2 border border-slate-700/50 overflow-hidden mt-1">
+                <div id="overall-progress-fill" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <div class="relative z-10 flex justify-end">
+                <span id="overall-percent" class="text-xs font-bold text-slate-300">0%</span>
             </div>
         </div>
     </div>
@@ -98,8 +100,59 @@
         </div>
 
         <div class="glass-panel p-6 w-full flex-1">
+            <!-- Active Operations -->
+            <h2 class="text-sm font-semibold mb-3 text-slate-400 uppercase tracking-wider">Active Operations</h2>
+            <div class="flex flex-col gap-3 mb-8">
+                <!-- Upload Row -->
+                <div id="upload-row" class="hidden flex flex-col gap-2 p-3 rounded-lg border border-purple-500/30 bg-purple-500/5 relative overflow-hidden">
+                    <div id="upload-bg" class="absolute top-0 left-0 h-full bg-purple-500/10 transition-all duration-300" style="width: 0%;"></div>
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></div>
+                    <div class="flex justify-between items-center relative z-10 w-full">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="flex-shrink-0 bg-purple-500/20 p-2 rounded-full text-purple-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                            </div>
+                            <div class="flex flex-col overflow-hidden">
+                                <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Uploading</span>
+                                <span id="upload-file" class="text-sm text-slate-200 truncate mt-0.5">/path/to/file</span>
+                            </div>
+                        </div>
+                        <span id="upload-speed" class="text-xs font-mono text-purple-400 bg-purple-900/40 px-1.5 py-0.5 rounded whitespace-nowrap ml-2">-- B/s</span>
+                    </div>
+                    <div class="relative z-10 flex items-center gap-3 mt-1">
+                        <div class="w-full bg-slate-800/80 rounded-full h-1.5 border border-slate-700/50 overflow-hidden flex-1">
+                            <div id="upload-bar-fill" class="bg-purple-400 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <span id="upload-percent" class="text-xs font-bold text-slate-300 font-mono w-10 text-right">0%</span>
+                    </div>
+                </div>
+                <!-- Download Row -->
+                <div id="download-row" class="hidden flex flex-col gap-2 p-3 rounded-lg border border-cyan-500/30 bg-cyan-500/5 relative overflow-hidden">
+                    <div id="download-bg" class="absolute top-0 left-0 h-full bg-cyan-500/10 transition-all duration-300" style="width: 0%;"></div>
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+                    <div class="flex justify-between items-center relative z-10 w-full">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="flex-shrink-0 bg-cyan-500/20 p-2 rounded-full text-cyan-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                            </div>
+                            <div class="flex flex-col overflow-hidden">
+                                <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Downloading</span>
+                                <span id="download-file" class="text-sm text-slate-200 truncate mt-0.5">/path/to/file</span>
+                            </div>
+                        </div>
+                        <span id="download-speed" class="text-xs font-mono text-cyan-400 bg-cyan-900/40 px-1.5 py-0.5 rounded whitespace-nowrap ml-2">-- B/s</span>
+                    </div>
+                    <div class="relative z-10 flex items-center gap-3 mt-1">
+                        <div class="w-full bg-slate-800/80 rounded-full h-1.5 border border-slate-700/50 overflow-hidden flex-1">
+                            <div id="download-bar-fill" class="bg-cyan-400 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <span id="download-percent" class="text-xs font-bold text-slate-300 font-mono w-10 text-right">0%</span>
+                    </div>
+                </div>
+            </div>
+
             <h2 class="text-xl font-semibold mb-4 text-slate-200 border-b border-slate-700 pb-3">Recent Activity (Last 20)</h2>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto mb-6">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
@@ -178,6 +231,16 @@
             }
         }
 
+        function formatETA(seconds) {
+            if (!seconds || seconds <= 0 || seconds === Infinity) return 'Calculating...';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return `${h}h ${m}m`;
+            if (m > 0) return `${m}m ${s}s`;
+            return `${s}s`;
+        }
+
         async function fetchStats() {
             try {
                 const res = await fetch('/api/stats');
@@ -189,37 +252,67 @@
                 document.getElementById('stat-completed').textContent = data.stats.COMPLETED || 0;
                 document.getElementById('stat-error').textContent = data.stats.ERROR || 0;
 
-                // Update Progress Widget
-                const progWidget = document.getElementById('progress-widget');
-                if (data.current_progress && currentDetailStatus === null) {
-                    progWidget.classList.remove('hidden');
-                    const p = data.current_progress;
+                // Update Overall Progress
+                if (data.total_bytes !== undefined) {
+                    const total = data.total_bytes;
+                    const migrated = data.total_migrated_bytes || 0;
+                    const speed = data.global_speed_bps || 0;
+                    const eta = data.eta_seconds || 0;
                     
-                    const isUpload = p.action === 'UPLOADING';
-                    const colorStr = isUpload ? 'emerald' : 'blue';
-                    const colorHex = isUpload ? '#34d399' : '#60a5fa'; // emerald-400 vs blue-400
-                    const bgHex = isUpload ? 'rgba(52, 211, 153, 0.2)' : 'rgba(96, 165, 250, 0.2)';
+                    const pct = total > 0 ? (migrated / total) * 100 : 0;
                     
-                    document.getElementById('progress-badge').style.backgroundColor = bgHex;
-                    document.getElementById('progress-badge').style.color = colorHex;
-                    document.getElementById('progress-badge').style.borderColor = colorHex;
-                    document.getElementById('progress-badge').textContent = p.action;
+                    document.getElementById('overall-migrated').textContent = formatBytes(migrated);
+                    document.getElementById('overall-total').textContent = formatBytes(total);
+                    document.getElementById('overall-progress-bg').style.width = `${pct}%`;
+                    document.getElementById('overall-progress-fill').style.width = `${pct}%`;
+                    document.getElementById('overall-percent').textContent = `${pct.toFixed(2)}%`;
                     
-                    document.getElementById('progress-file').textContent = p.file;
+                    document.getElementById('overall-eta').textContent = formatETA(eta);
+                }
+
+                // Update Download row and Top DL Speed
+                const dlRow = document.getElementById('download-row');
+                const topDlSpeed = document.getElementById('top-dl-speed');
+                if (data.current_download) {
+                    dlRow.classList.remove('hidden');
+                    const p = data.current_download;
+                    document.getElementById('download-file').textContent = p.file;
+                    const pct = Math.min(100, Math.max(0, p.percent)).toFixed(1);
+                    document.getElementById('download-bg').style.width = `${pct}%`;
+                    document.getElementById('download-bar-fill').style.width = `${pct}%`;
+                    document.getElementById('download-percent').textContent = `${pct}%`;
                     
-                    const percent = Math.min(100, Math.max(0, p.percent)).toFixed(1);
-                    document.getElementById('progress-bg').style.width = `${percent}%`;
-                    document.getElementById('progress-bg').style.backgroundColor = isUpload ? 'rgba(52, 211, 153, 0.1)' : 'rgba(96, 165, 250, 0.1)';
-                    
-                    document.getElementById('progress-bar-fill').style.width = `${percent}%`;
-                    document.getElementById('progress-bar-fill').style.backgroundColor = colorHex;
-                    
-                    document.getElementById('progress-percent').textContent = `${percent}%`;
-                    document.getElementById('progress-bytes').textContent = `${formatBytes(p.transferred)} / ${formatBytes(p.total)}`;
-                    
-                    document.getElementById('progress-speed').textContent = `${formatBytes(p.speed_bps)}/s`;
+                    const speedStr = `${formatBytes(p.speed_bps)}/s`;
+                    document.getElementById('download-speed').textContent = speedStr;
+                    topDlSpeed.textContent = `↓ ${speedStr}`;
+                    topDlSpeed.classList.remove('opacity-50');
                 } else {
-                    progWidget.classList.add('hidden');
+                    dlRow.classList.add('hidden');
+                    topDlSpeed.textContent = `↓ 0 B/s`;
+                    topDlSpeed.classList.add('opacity-50');
+                }
+                
+                // Update Upload row and Top UL Speed
+                const upRow = document.getElementById('upload-row');
+                const topUlSpeed = document.getElementById('top-ul-speed');
+                if (data.current_upload) {
+                    upRow.classList.remove('hidden');
+                    const p = data.current_upload;
+                    document.getElementById('upload-file').textContent = p.file;
+                    
+                    const pct = Math.min(100, Math.max(0, p.percent)).toFixed(1);
+                    document.getElementById('upload-bg').style.width = `${pct}%`;
+                    document.getElementById('upload-bar-fill').style.width = `${pct}%`;
+                    document.getElementById('upload-percent').textContent = `${pct}%`;
+                    
+                    const speedStr = `${formatBytes(p.speed_bps)}/s`;
+                    document.getElementById('upload-speed').textContent = speedStr;
+                    topUlSpeed.textContent = `↑ ${speedStr}`;
+                    topUlSpeed.classList.remove('opacity-50');
+                } else {
+                    upRow.classList.add('hidden');
+                    topUlSpeed.textContent = `↑ 0 B/s`;
+                    topUlSpeed.classList.add('opacity-50');
                 }
 
                 // Update recent table if we are on dashboard
@@ -233,8 +326,16 @@
                         
                         const statusColor = getStatusColor(f.status);
                         
+                        let statusHtml = `<td class="py-3 pr-4 font-semibold ${statusColor}">${f.status}</td>`;
+                        if (f.status === 'COMPLETED') {
+                            statusHtml = `<td class="py-3 pr-4 font-semibold text-emerald-400 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                COMPLETED
+                            </td>`;
+                        }
+                        
                         tr.innerHTML = `
-                            <td class="py-3 pr-4 font-semibold ${statusColor}">${f.status}</td>
+                            ${statusHtml}
                             <td class="py-3 pr-4 text-slate-300 truncate max-w-md" title="${f.dropbox_path}">${f.dropbox_path}</td>
                             <td class="py-3 text-right text-slate-400 font-mono text-xs">${formatBytes(f.size)}</td>
                         `;
